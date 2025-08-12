@@ -1,10 +1,9 @@
-import { FlatList, View } from 'react-native';
-import LessonCard from './LessonCard';
-import { path } from '@/lessonRelated.js';
-import { Link } from 'expo-router';
+import { path } from "@/lessonRelated.js";
+import { Link } from "expo-router";
+import { FlatList, View } from "react-native";
+import LessonCard from "./LessonCard";
 
-const Cards = () => {
-
+const Cards = ({ listHeader }: { listHeader?: React.ReactElement }) => {
   const renderItem = ({ item }: any) => {
     const [key, value] = Object.entries(item)[0];
     return (
@@ -20,8 +19,8 @@ const Cards = () => {
         data={path}
         renderItem={renderItem}
         keyExtractor={(_, index) => index.toString()}
-        className="px-1 " // Tailwind от NativeWind
-        // Ensure FlatList takes full available space
+        className="px-1 "
+        ListHeaderComponent={listHeader}
       />
     </View>
   );

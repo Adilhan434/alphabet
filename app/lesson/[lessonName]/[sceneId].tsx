@@ -1,5 +1,4 @@
 import { useTheme } from "@/app/ThemeContext";
-import { ICONS } from "@/consonants.js";
 import { lessons } from "@/lessonRelated.js";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,6 +20,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import HeaderForLesson from "@/components/forLesson/HeaderForLesson";
+import Footer from "@/components/forLesson/Footer";
 
 // --- расширяем global для хранения активного аудио и видео плееров
 declare global {
@@ -36,102 +37,6 @@ if (!global.activeVideoPlayer) {
   global.activeVideoPlayer = null;
 }
 
-const Footer = () => {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  const router = useRouter();
-  const { lessonName, sceneId } = useLocalSearchParams<{
-    lessonName: string;
-    sceneId: string;
-  }>();
-
-  const currentId = parseInt(sceneId || "1", 10);
-
-  // универсальная остановка медиа (аудио и видео)
-  const stopCurrentMedia = async () => {
-    try {
-      if (global.activeAudio) {
-        try {
-          await global.activeAudio.stopAsync();
-        } catch {} // ignore
-        try {
-          await global.activeAudio.unloadAsync();
-        } catch {} // ignore
-        global.activeAudio = null;
-      }
-
-      if (global.activeVideoPlayer) {
-        try {
-          // pause может быть sync/async в зависимости от реализации — await безопасно
-          await global.activeVideoPlayer.pause();
-        } catch (e) {
-          console.error("Ошибка при паузе видео-плеера:", e);
-        }
-        // не выгружаем ресурс видео здесь (чтобы не ломать поведение плеера),
-        // просто очищаем ссылку: следующая сцена при необходимости создаст/подставит новый плеер
-        global.activeVideoPlayer = null;
-      }
-    } catch (error) {
-      console.error("Ошибка при остановке медиа:", error);
-    }
-  };
-
-  const handleNext = async () => {
-    await stopCurrentMedia();
-    if (currentId !== 6) {
-      router.push(`/lesson/${lessonName}/${currentId + 1}`);
-    } else {
-      router.push(`/lesson/${lessonName}/1`);
-    }
-  };
-
-  const handlePrevious = async () => {
-    await stopCurrentMedia();
-    if (currentId > 1) {
-      router.push(`/lesson/${lessonName}/${currentId - 1}`);
-    }
-  };
-
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        paddingHorizontal: 40,
-        paddingVertical: 20,
-        width: "100%",
-        height: 90,
-        backgroundColor: "#6366F1", // primary цвет
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      <Pressable
-        onPress={handlePrevious}
-        disabled={currentId <= 1}
-        style={({ pressed }) => ({
-          opacity: pressed || currentId <= 1 ? 0.5 : 1,
-        })}
-      >
-        <Image
-          source={require("@/assets/icons/previous.png")}
-          style={{ tintColor: isDark ? "#fff" : undefined }}
-        />
-      </Pressable>
-
-      <Pressable
-        onPress={handleNext}
-        style={({ pressed }) => ({
-          opacity: pressed ? 0.5 : 1,
-        })}
-      >
-        <Image
-          source={require("@/assets/icons/next.png")}
-          style={{ tintColor: isDark ? "#fff" : undefined }}
-        />
-      </Pressable>
-    </View>
-  );
-};
 
 const { width } = Dimensions.get("window");
 
@@ -528,58 +433,7 @@ const AudioScene = ({ scene, title }: { scene: any; title: string }) => {
   );
 };
 
-const HeaderForLesson = ({ header }: { header: string }) => {
-  const router = useRouter();
 
-  const stopCurrentMediaAndGoHome = async () => {
-    try {
-      if (global.activeAudio) {
-        try {
-          await global.activeAudio.stopAsync();
-        } catch {} // ignore
-        try {
-          await global.activeAudio.unloadAsync();
-        } catch {} // ignore
-        global.activeAudio = null;
-      }
-
-      if (global.activeVideoPlayer) {
-        try {
-          await global.activeVideoPlayer.pause();
-        } catch (e) {
-          console.error("Ошибка при паузе видео-плеера:", e);
-        }
-        global.activeVideoPlayer = null;
-      }
-    } catch (err) {
-      console.error("Ошибка при остановке медиа перед переходом в меню:", err);
-    } finally {
-      router.push("/");
-    }
-  };
-
-  return (
-    <View className="w-full bg-primary h-[13vh] px-4 py-3 items-end justify-between flex-row">
-      <Pressable onPress={stopCurrentMediaAndGoHome}>
-        <Image
-          source={ICONS.backtomenu}
-          style={{ width: 40, height: 40 }} // Вместо className
-        />
-      </Pressable>
-
-      <View className="flex-row gap-5 justify-center items-center">
-        <Text className="font-extrabold text-[34px] leading-[41px] text-text">
-          {header}
-        </Text>
-        <Text className="text-text font-noto font-normal text-[20px] leading-[27px]">
-          тамгасы
-        </Text>
-      </View>
-
-      <View style={{ width: 28, height: 28 }} />
-    </View>
-  );
-};
 
 const styles = StyleSheet.create({
   center: {
