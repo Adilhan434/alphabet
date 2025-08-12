@@ -1,21 +1,31 @@
-import '@/app/global.css'
-import { ICONS } from '@/consonants.js'
-import { Image } from 'react-native'
-import { Link } from 'expo-router'
-import { Text, View,  } from 'react-native'
+import "@/app/global.css";
+import { ICONS } from "@/consonants.js";
+import { Link } from "expo-router";
+import { Image, Text, View } from "react-native";
 
 const Header = () => {
   return (
-      <View  className='w-full h-[13vh] bg-primary  px-2 py-5 items-end justify-between flex-row'>
-        <Link href='/settings'>
-          <Image
-            source={ICONS.burgermenu} 
-            className='w-7 h-7'/>
-        </Link>
-            <Text className='font-extrabold text-[19px] text-header'>АРАБ АЛФАВИТИ</Text>
-           <View className="w-7 h-7" />           
+    <View
+      style={{
+        width: "100%",
+        height: 90,
+        backgroundColor: "#6366F1",
+        paddingHorizontal: 8,
+        paddingVertical: 20,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <Link href="/settings">
+        <Image source={ICONS.burgermenu} style={{ width: 28, height: 28 }} />
+      </Link>
+      <Text style={{ fontWeight: "bold", fontSize: 19, color: "white" }}>
+        АРАБ АЛФАВИТИ
+      </Text>
+      <View style={{ width: 28, height: 28 }} />
     </View>
-  )
-}
+  );
+};
 
-export default Header
+export default Header;

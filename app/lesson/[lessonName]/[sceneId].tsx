@@ -1,26 +1,26 @@
-import { lessons } from '@/lessonRelated.js';
-import { Ionicons } from '@expo/vector-icons';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { useEvent } from 'expo';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ICONS } from '@/consonants.js'
-import { Link } from 'expo-router';
+import { useTheme } from "@/app/ThemeContext";
+import { ICONS } from "@/consonants.js";
+import { lessons } from "@/lessonRelated.js";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEvent } from "expo";
+import { Audio } from "expo-av";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
   View,
-  Image,
-  Pressable
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // --- расширяем global для хранения активного аудио и видео плееров
 declare global {
@@ -37,13 +37,15 @@ if (!global.activeVideoPlayer) {
 }
 
 const Footer = () => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const router = useRouter();
   const { lessonName, sceneId } = useLocalSearchParams<{
     lessonName: string;
     sceneId: string;
   }>();
 
-  const currentId = parseInt(sceneId || '1', 10);
+  const currentId = parseInt(sceneId || "1", 10);
 
   // универсальная остановка медиа (аудио и видео)
   const stopCurrentMedia = async () => {
@@ -51,10 +53,10 @@ const Footer = () => {
       if (global.activeAudio) {
         try {
           await global.activeAudio.stopAsync();
-        } catch (e) { /* ignore */ }
+        } catch {} // ignore
         try {
           await global.activeAudio.unloadAsync();
-        } catch (e) { /* ignore */ }
+        } catch {} // ignore
         global.activeAudio = null;
       }
 
@@ -63,14 +65,14 @@ const Footer = () => {
           // pause может быть sync/async в зависимости от реализации — await безопасно
           await global.activeVideoPlayer.pause();
         } catch (e) {
-          console.error('Ошибка при паузе видео-плеера:', e);
+          console.error("Ошибка при паузе видео-плеера:", e);
         }
         // не выгружаем ресурс видео здесь (чтобы не ломать поведение плеера),
         // просто очищаем ссылку: следующая сцена при необходимости создаст/подставит новый плеер
         global.activeVideoPlayer = null;
       }
     } catch (error) {
-      console.error('Ошибка при остановке медиа:', error);
+      console.error("Ошибка при остановке медиа:", error);
     }
   };
 
@@ -91,31 +93,47 @@ const Footer = () => {
   };
 
   return (
-    <View className='flex-row px-10 py-5 w-full h-[13vh] bg-primary items-center justify-between'>
-      <Pressable 
-        onPress={handlePrevious} 
+    <View
+      style={{
+        flexDirection: "row",
+        paddingHorizontal: 40,
+        paddingVertical: 20,
+        width: "100%",
+        height: 90,
+        backgroundColor: "#6366F1", // primary цвет
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <Pressable
+        onPress={handlePrevious}
         disabled={currentId <= 1}
         style={({ pressed }) => ({
-          opacity: pressed || currentId <= 1 ? 0.5 : 1
+          opacity: pressed || currentId <= 1 ? 0.5 : 1,
         })}
       >
-        <Image source={require('@/assets/icons/previous.png')} />
+        <Image
+          source={require("@/assets/icons/previous.png")}
+          style={{ tintColor: isDark ? "#fff" : undefined }}
+        />
       </Pressable>
 
-      <Pressable 
+      <Pressable
         onPress={handleNext}
         style={({ pressed }) => ({
-          opacity: pressed ? 0.5 : 1
+          opacity: pressed ? 0.5 : 1,
         })}
       >
-        <Image source={require('@/assets/icons/next.png')} />
+        <Image
+          source={require("@/assets/icons/next.png")}
+          style={{ tintColor: isDark ? "#fff" : undefined }}
+        />
       </Pressable>
     </View>
   );
 };
 
-
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 const SceneId = () => {
   const { lessonName, sceneId } = useLocalSearchParams();
@@ -123,11 +141,13 @@ const SceneId = () => {
   const lessonKey = lessonName as keyof typeof lessons;
   const scene = lessons[lessonKey]?.[id];
   const title = lessons[lessonKey]?.[0] as string;
-  
+
   if (!lessonName || isNaN(id) || !scene) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>Неверные параметры сцены или сцена не найдена</Text>
+        <Text style={styles.errorText}>
+          Неверные параметры сцены или сцена не найдена
+        </Text>
       </View>
     );
   }
@@ -147,25 +167,58 @@ const SceneId = () => {
   );
 };
 
+const PreloadNextVideo = ({ video }: { video: any }) => {
+  useVideoPlayer(video);
+  return null;
+};
 
-const VideoScene = ({ scene, title }) => {
+const VideoScene = ({ scene, title }: { scene: any; title: string }) => {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Загружаем видео через useVideoPlayer
+  useEffect(() => {
+    setIsLoading(true);
+    const preload = async () => {
+      try {
+        if (scene.video) {
+          setIsLoading(false);
+        }
+      } catch {
+        setHasError(true);
+        setIsLoading(false);
+      }
+    };
+    preload();
+  }, [scene.video, title]);
+
   const player = useVideoPlayer(scene.video);
 
+  // --- LAZY LOAD: предзагрузка следующего видео в фоне через скрытый компонент ---
+  let nextVideo = null;
+  const lessonScenes = lessons[title as keyof typeof lessons];
+  if (lessonScenes) {
+    const sceneIdx = lessonScenes.findIndex(
+      (s: any) => s.video === scene.video
+    );
+    const nextScene = lessonScenes[sceneIdx + 1];
+    if (nextScene && typeof nextScene === "object" && "video" in nextScene) {
+      nextVideo = nextScene.video;
+    }
+  }
+
   // Слушаем изменение статуса (loading, readyToPlay, error)
-  const { status } = useEvent(player, 'statusChange', { status: player.status });
+  const { status } = useEvent(player, "statusChange", {
+    status: player.status,
+  });
 
   useEffect(() => {
-    if (status === 'error') {
+    if (status === "error") {
       setHasError(true);
       setIsLoading(false);
-    } else if (status === 'readyToPlay') {
+    } else if (status === "readyToPlay") {
       setIsLoading(false);
       setHasError(false);
-    } else if (status === 'loading') {
+    } else if (status === "loading") {
       setIsLoading(true);
     }
   }, [status]);
@@ -176,20 +229,17 @@ const VideoScene = ({ scene, title }) => {
 
     return () => {
       try {
-        player.pause();
-      } catch (e) {
-        // ignore
-      }
+        if (
+          player &&
+          typeof player === "object" &&
+          typeof player.pause === "function"
+        ) {
+          player.pause();
+        }
+      } catch {}
       if (global.activeVideoPlayer === player) {
         global.activeVideoPlayer = null;
       }
-    };
-  }, [player]);
-
-  // Очистка при размонтировании (старый код — оставил)
-  useEffect(() => {
-    return () => {
-      player.pause();
     };
   }, [player]);
 
@@ -204,53 +254,83 @@ const VideoScene = ({ scene, title }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white'}}>
-        
+    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <HeaderForLesson header={title} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          {isLoading && (
-            <View style={{ width: '100%', aspectRatio: 16 / 9, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6', borderRadius: 12 }}>
-              <ActivityIndicator size="large" color="#6366F1" />
-            </View>
-          )}
-
-          {hasError && (
-            <View style={{ width: '100%', aspectRatio: 16 / 9, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ color: 'red', marginBottom: 12 }}>Ошибка загрузки видео</Text>
-              <TouchableOpacity
-                onPress={handleRetry}
-                style={{ backgroundColor: '#6366F1', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, flexDirection: 'row', alignItems: 'center' }}
-              >
-                <Ionicons name="reload" size={20} color="white" />
-                <Text style={{ color: 'white', marginLeft: 8 }}>Попробовать снова</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {!isLoading && !hasError && (
-            <VideoView
-              player={player}
-              style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: 'black', borderRadius: 12 }}
-              contentFit="contain"
-              nativeControls
-            />
-          )}
-        </View>
-        <Footer/>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        {isLoading && (
+          <View
+            style={{
+              width: "100%",
+              aspectRatio: 16 / 9,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#f3f4f6",
+              borderRadius: 12,
+            }}
+          >
+            <ActivityIndicator size="large" color="#6366F1" />
+          </View>
+        )}
+        {hasError && (
+          <View
+            style={{
+              width: "100%",
+              aspectRatio: 16 / 9,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "red", marginBottom: 12 }}>
+              Ошибка загрузки видео
+            </Text>
+            <TouchableOpacity
+              onPress={handleRetry}
+              style={{
+                backgroundColor: "#6366F1",
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 25,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <Ionicons name="reload" size={20} color="white" />
+              <Text style={{ color: "white", marginLeft: 8 }}>
+                Попробовать снова
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {!isLoading && !hasError && (
+          <VideoView
+            player={player}
+            style={{
+              width: "100%",
+              aspectRatio: 16 / 9,
+              backgroundColor: "black",
+              borderRadius: 12,
+            }}
+            contentFit="contain"
+            nativeControls
+          />
+        )}
+        {/* Предзагрузка следующего видео */}
+        {nextVideo && <PreloadNextVideo video={nextVideo} />}
+      </View>
+      <Footer />
     </SafeAreaView>
   );
 };
 
-
-const AudioScene = ({ scene, title }) => {
-  const audioRef = useRef<Audio.Sound | null>(null);  
+const AudioScene = ({ scene, title }: { scene: any; title: string }) => {
+  const audioRef = useRef<Audio.Sound | null>(null);
   const [isEnabled, setIsEnabled] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
   const isMounted = useRef(true);
 
-  const AUTO_PLAY_KEY = 'autoPlayEnabled';
+  const AUTO_PLAY_KEY = "autoPlayEnabled";
 
   const loadAutoPlayPreference = async () => {
     try {
@@ -259,15 +339,15 @@ const AudioScene = ({ scene, title }) => {
         setIsEnabled(JSON.parse(value));
       }
     } catch (error) {
-      console.error('Ошибка загрузки предпочтений:', error);
+      console.error("Ошибка загрузки предпочтений:", error);
     }
   };
 
-  const saveAutoPlayPreference = async (value) => {
+  const saveAutoPlayPreference = async (value: boolean) => {
     try {
       await AsyncStorage.setItem(AUTO_PLAY_KEY, JSON.stringify(value));
-    } catch (error) {
-      console.error('Ошибка сохранения предпочтений:', error);
+    } catch {
+      console.error("Ошибка сохранения предпочтений:");
     }
   };
 
@@ -277,13 +357,13 @@ const AudioScene = ({ scene, title }) => {
 
   useEffect(() => {
     let isActive = true;
-    
+
     const loadAudio = async () => {
       if (!scene.audio) return;
 
       try {
         setIsLoading(true);
-        
+
         // Останавливаем и выгружаем предыдущее аудио
         if (audioRef.current) {
           await audioRef.current.stopAsync();
@@ -291,15 +371,14 @@ const AudioScene = ({ scene, title }) => {
           audioRef.current = null;
         }
 
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: scene.audio },
-          { shouldPlay: false }
-        );
-        
+        const { sound } = await Audio.Sound.createAsync(scene.audio, {
+          shouldPlay: false,
+        });
+
         if (isActive) {
           audioRef.current = sound;
           global.activeAudio = sound;
-          console.log('Аудио загружено успешно');
+          console.log("Аудио загружено успешно");
         } else {
           sound.unloadAsync();
         }
@@ -330,13 +409,19 @@ const AudioScene = ({ scene, title }) => {
 
   useEffect(() => {
     const playAudio = async () => {
-      if (isEnabled && !hasError && !isLoading && scene.audio && audioRef.current) {
+      if (
+        isEnabled &&
+        !hasError &&
+        !isLoading &&
+        scene.audio &&
+        audioRef.current
+      ) {
         try {
           await audioRef.current.playAsync();
           setIsPlaying(true);
-          console.log('Автоматическое воспроизведение начато');
+          console.log("Автоматическое воспроизведение начато");
         } catch (err) {
-          console.error('Ошибка при автоматическом воспроизведении:', err);
+          console.error("Ошибка при автоматическом воспроизведении:", err);
           setHasError(true);
         }
       }
@@ -347,8 +432,12 @@ const AudioScene = ({ scene, title }) => {
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.setOnPlaybackStatusUpdate(status => {
-        if (status.didJustFinish && isMounted.current) {
+      audioRef.current.setOnPlaybackStatusUpdate((status) => {
+        if (
+          "didJustFinish" in status &&
+          status.didJustFinish &&
+          isMounted.current
+        ) {
           setIsPlaying(false);
         }
       });
@@ -361,14 +450,13 @@ const AudioScene = ({ scene, title }) => {
     try {
       if (!audioRef.current) {
         setIsLoading(true);
-        const { sound } = await Audio.Sound.createAsync({ uri: scene.audio });
+        const { sound } = await Audio.Sound.createAsync(scene.audio);
         audioRef.current = sound;
         global.activeAudio = sound;
       }
 
       const status = await audioRef.current.getStatusAsync();
-      
-      if (status.isPlaying) {
+      if ("isPlaying" in status && status.isPlaying) {
         await audioRef.current.pauseAsync();
         setIsPlaying(false);
       } else {
@@ -382,7 +470,7 @@ const AudioScene = ({ scene, title }) => {
     }
   };
 
-  const handleAutoPlayChange = (value) => {
+  const handleAutoPlayChange = (value: boolean) => {
     setIsEnabled(value);
     saveAutoPlayPreference(value);
   };
@@ -428,8 +516,8 @@ const AudioScene = ({ scene, title }) => {
       <View className="flex-row justify-center items-center py-6 border-t border-gray-200">
         <Text className="text-base mr-3">Автовоспроизведение:</Text>
         <Switch
-          trackColor={{ false: '#e5e7eb', true: '#a5b4fc' }}
-          thumbColor={isEnabled ? '#4f46e5' : '#f3f4f6'}
+          trackColor={{ false: "#e5e7eb", true: "#a5b4fc" }}
+          thumbColor={isEnabled ? "#4f46e5" : "#f3f4f6"}
           value={isEnabled}
           onValueChange={handleAutoPlayChange}
         />
@@ -440,7 +528,6 @@ const AudioScene = ({ scene, title }) => {
   );
 };
 
-
 const HeaderForLesson = ({ header }: { header: string }) => {
   const router = useRouter();
 
@@ -449,10 +536,10 @@ const HeaderForLesson = ({ header }: { header: string }) => {
       if (global.activeAudio) {
         try {
           await global.activeAudio.stopAsync();
-        } catch (e) {}
+        } catch {} // ignore
         try {
           await global.activeAudio.unloadAsync();
-        } catch (e) {}
+        } catch {} // ignore
         global.activeAudio = null;
       }
 
@@ -460,19 +547,19 @@ const HeaderForLesson = ({ header }: { header: string }) => {
         try {
           await global.activeVideoPlayer.pause();
         } catch (e) {
-          console.error('Ошибка при паузе видео-плеера:', e);
+          console.error("Ошибка при паузе видео-плеера:", e);
         }
         global.activeVideoPlayer = null;
       }
     } catch (err) {
-      console.error('Ошибка при остановке медиа перед переходом в меню:', err);
+      console.error("Ошибка при остановке медиа перед переходом в меню:", err);
     } finally {
-      router.push('/');
+      router.push("/");
     }
   };
 
   return (
-    <View className='w-full bg-primary h-[13vh] px-4 py-3 items-end justify-between flex-row'>
+    <View className="w-full bg-primary h-[13vh] px-4 py-3 items-end justify-between flex-row">
       <Pressable onPress={stopCurrentMediaAndGoHome}>
         <Image
           source={ICONS.backtomenu}
@@ -480,34 +567,31 @@ const HeaderForLesson = ({ header }: { header: string }) => {
         />
       </Pressable>
 
-      <View className='flex-row gap-5 justify-center items-center'>
-        <Text className='font-extrabold text-[34px] leading-[41px] text-text'>
+      <View className="flex-row gap-5 justify-center items-center">
+        <Text className="font-extrabold text-[34px] leading-[41px] text-text">
           {header}
         </Text>
-        <Text className='text-text font-noto font-normal text-[20px] leading-[27px]'>
+        <Text className="text-text font-noto font-normal text-[20px] leading-[27px]">
           тамгасы
         </Text>
       </View>
 
       <View style={{ width: 28, height: 28 }} />
     </View>
-  )
-}
-
-
-
+  );
+};
 
 const styles = StyleSheet.create({
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
     fontSize: 18,
-    color: '#ef4444',
-    textAlign: 'center',
+    color: "#ef4444",
+    textAlign: "center",
   },
 });
 

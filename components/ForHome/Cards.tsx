@@ -20,7 +20,7 @@ const Cards = () => {
         data={path}
         renderItem={renderItem}
         keyExtractor={(_, index) => index.toString()}
-        className="px-1 pt-[6vh]" // Tailwind от NativeWind
+        className="px-1 " // Tailwind от NativeWind
         // Ensure FlatList takes full available space
       />
     </View>
