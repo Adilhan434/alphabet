@@ -32,8 +32,7 @@
 const dummyVideo = require('./assets/videos/dummy.mp4');
 
 export const videoAssets = {
-  alif: dummyVideo,
-  ba: dummyVideo,
+  alifBa: dummyVideo,
   ta: dummyVideo,
   tha: dummyVideo,
   jim: dummyVideo,

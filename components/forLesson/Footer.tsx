@@ -45,7 +45,7 @@ const Footer = () => {
 
   const handleNext = async () => {
     await stopCurrentMedia();
-    if (currentId !== 6) {
+    if (currentId !== 14) {
       router.push(`/lesson/${lessonName}/${currentId + 1}`);
     } else {
       router.push(`/lesson/${lessonName}/1`);

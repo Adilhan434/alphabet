@@ -1,18 +1,18 @@
-import { useTheme } from "@/app/ThemeContext";
+import Footer from "@/components/forLesson/Footer";
+import HeaderForLesson from "@/components/forLesson/HeaderForLesson";
 import { lessons } from "@/lessonRelated.js";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEvent } from "expo";
 import { Audio } from "expo-av";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
-  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -20,8 +20,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import HeaderForLesson from "@/components/forLesson/HeaderForLesson";
-import Footer from "@/components/forLesson/Footer";
 
 // --- расширяем global для хранения активного аудио и видео плееров
 declare global {
@@ -36,7 +34,6 @@ if (!global.activeAudio) {
 if (!global.activeVideoPlayer) {
   global.activeVideoPlayer = null;
 }
-
 
 const { width } = Dimensions.get("window");
 
@@ -61,7 +58,7 @@ const SceneId = () => {
     return <VideoScene scene={scene} title={title} />;
   }
 
-  if (id >= 2 && id <= 6) {
+  if (id >= 2 && id <= 14) {
     return <AudioScene scene={scene} title={title} />;
   }
 
@@ -80,6 +77,11 @@ const PreloadNextVideo = ({ video }: { video: any }) => {
 const VideoScene = ({ scene, title }: { scene: any; title: string }) => {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Получаем ширину экрана
+  const screenWidth = Dimensions.get("window").width;
+  // Для больших экранов ограничиваем ширину видео
+  const videoWidth = screenWidth > 800 ? 700 : screenWidth;
 
   useEffect(() => {
     setIsLoading(true);
@@ -160,12 +162,14 @@ const VideoScene = ({ scene, title }: { scene: any; title: string }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
       <HeaderForLesson header={title} />
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         {isLoading && (
           <View
             style={{
-              width: "100%",
+              width: videoWidth,
+              maxWidth: "100%",
               aspectRatio: 16 / 9,
               justifyContent: "center",
               alignItems: "center",
@@ -179,7 +183,8 @@ const VideoScene = ({ scene, title }: { scene: any; title: string }) => {
         {hasError && (
           <View
             style={{
-              width: "100%",
+              width: videoWidth,
+              maxWidth: "100%",
               aspectRatio: 16 / 9,
               justifyContent: "center",
               alignItems: "center",
@@ -210,7 +215,8 @@ const VideoScene = ({ scene, title }: { scene: any; title: string }) => {
           <VideoView
             player={player}
             style={{
-              width: "100%",
+              width: videoWidth,
+              maxWidth: "100%",
               aspectRatio: 16 / 9,
               backgroundColor: "black",
               borderRadius: 12,
@@ -382,6 +388,7 @@ const AudioScene = ({ scene, title }: { scene: any; title: string }) => {
 
   return (
     <SafeAreaView className="flex-1">
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
       <HeaderForLesson header={title} />
 
       <ScrollView contentContainerClassName="flex-1 items-center justify-center">
@@ -432,8 +439,6 @@ const AudioScene = ({ scene, title }: { scene: any; title: string }) => {
     </SafeAreaView>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   center: {
