@@ -6,23 +6,13 @@
     "production": {
       "releaseChannel": "production",
       "distribution": "store",
-      "ios": {
-        "workflow": "managed",
-        "buildType": "release"
-      },
       "android": {
-        "workflow": "managed",
         "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
-      "ios": {
-        "workflow": "managed",
-        "buildType": "release"
-      },
       "android": {
-        "workflow": "managed",
         "buildType": "apk"
       }
     }
